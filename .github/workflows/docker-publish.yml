@@ -116,3 +116,4 @@ jobs:
         run: |
           echo "Image: ghcr.io/${{ github.repository }}:latest"
           echo "Upstream: ${UPSTREAM_REPO}@${{ needs.check-upstream.outputs.upstream_sha }}"
+# force re-register
