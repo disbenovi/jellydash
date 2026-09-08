@@ -17,7 +17,15 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_IMAGE_PROTOCOL=$NEXT_PUBLIC_IMAGE_PROTOCOL \
     NEXT_PUBLIC_IMAGE_HOSTNAME=$NEXT_PUBLIC_IMAGE_HOSTNAME \
-    NEXT_PUBLIC_ALLOWED_DEV_ORIGIN=$NEXT_PUBLIC_ALLOWED_DEV_ORIGIN
+    NEXT_PUBLIC_ALLOWED_DEV_ORIGIN=$NEXT_PUBLIC_ALLOWED_DEV_ORIGIN \
+    # placeholders so module-load-time validation in app/api/auth/authoptions.ts
+    # doesn't abort `next build` (route handlers are evaluated for page data
+    # collection). Runtime overrides below in the runner stage.
+    NEXTAUTH_SECRET=build-time-placeholder \
+    NEXTAUTH_URL=http://localhost:4000 \
+    SERVER_URL=http://localhost:8096 \
+    JELLYFIN_ADMIN_API_KEY=build-time-placeholder \
+    NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=build-time-placeholder
 RUN npm run build
 
 FROM node:22-alpine AS runner
