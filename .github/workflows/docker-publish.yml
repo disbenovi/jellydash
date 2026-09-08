@@ -6,6 +6,7 @@ on:
     paths:
       - 'Dockerfile'
       - '.github/workflows/docker-publish.yml'
+      - 'overrides/**'
   workflow_dispatch:
   schedule:
     # every 6 hours: check upstream for new commits
@@ -68,7 +69,9 @@ jobs:
         run: |
           tar -C upstream --exclude=upstream/.git -cf - . | tar -C . -xf -
           rm -rf upstream
-          ls -la
+          # overlay reconstructed app/db helpers (upstream gitignores app/db)
+          cp -a overrides/app/db/. app/db/
+          ls -la app/db
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
