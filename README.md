@@ -61,13 +61,14 @@ services:
     env_file: jellydash.env
     volumes:
       - ./db:/app/app/db
+    user: "1001:1001"
 ```
 
 `app/db/` holds all state (roles, ratings, watchlist settings). Mount it to persist across image updates.
 
 ## Permissions inside the container
 
-The app runs as user `nextjs` (uid 1001). If the mounted `./db` directory is owned by root, the app cannot write state files and API routes fail. Fix with:
+The image declares user `nextjs` (uid 1001), and the compose example pins `user: "1001:1001"` so the container runs as that uid regardless of the image default. If the mounted `./db` directory is owned by root, the app cannot write state files and API routes fail. Fix with:
 
 ```
 sudo chown -R 1001:1001 ./db
