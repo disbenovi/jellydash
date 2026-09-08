@@ -10,7 +10,7 @@ export const DB_DIR = path.join(process.cwd(), 'app', 'db');
 export type Role = {
   id: string;
   name: string;
-  maxParentalRating: string | null;
+  maxParentalRating: number | null;
 };
 
 export type Rating = {
