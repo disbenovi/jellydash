@@ -1,0 +1,118 @@
+name: Build & Publish Image
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker-publish.yml'
+  workflow_dispatch:
+  schedule:
+    # every 6 hours: check upstream for new commits
+    - cron: '17 */6 * * *'
+
+env:
+  UPSTREAM_REPO: developed-by-will/jellydash
+  UPSTREAM_BRANCH: master
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-publish
+  cancel-in-progress: false
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      upstream_sha: ${{ steps.check.outputs.upstream_sha }}
+    steps:
+      - name: Get upstream latest commit
+        id: check
+        run: |
+          UPSTREAM_SHA=$(curl -sf -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${UPSTREAM_REPO}/commits/${UPSTREAM_BRANCH}" | jq -r '.sha')
+          if [ -z "$UPSTREAM_SHA" ] || [ "$UPSTREAM_SHA" = "null" ]; then
+            echo "Failed to fetch upstream SHA" >&2
+            exit 1
+          fi
+          LAST_SHA="${{ vars.UPSTREAM_SHA || 'none' }}"
+          if [ "$UPSTREAM_SHA" = "$LAST_SHA" ]; then
+            echo "No upstream change (last: $LAST_SHA, current: $UPSTREAM_SHA)"
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Upstream changed: $LAST_SHA -> $UPSTREAM_SHA"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+
+  build-push:
+    needs: check-upstream
+    if: needs.check-upstream.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo (Dockerfile)
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          ref: ${{ env.UPSTREAM_BRANCH }}
+          path: upstream
+
+      - name: Assemble build context
+        run: |
+          shopt -s dotglob
+          mv upstream/* .
+          rmdir upstream
+          ls -la
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_IMAGE_PROTOCOL=${{ vars.NEXT_PUBLIC_IMAGE_PROTOCOL || 'https' }}
+            NEXT_PUBLIC_IMAGE_HOSTNAME=${{ vars.NEXT_PUBLIC_IMAGE_HOSTNAME || 'jellyfin.local' }}
+            NEXT_PUBLIC_ALLOWED_DEV_ORIGIN=${{ vars.NEXT_PUBLIC_ALLOWED_DEV_ORIGIN || 'http://localhost:4000' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save upstream SHA
+        run: |
+          curl -sf -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/variables/UPSTREAM_SHA \
+            -d '{"name":"UPSTREAM_SHA","value":"${{ needs.check-upstream.outputs.upstream_sha }}"}' > /dev/null
+
+      - name: Image published
+        run: |
+          echo "Image: ghcr.io/${{ github.repository }}:latest"
+          echo "Upstream: ${UPSTREAM_REPO}@${{ needs.check-upstream.outputs.upstream_sha }}"
