@@ -19,6 +19,7 @@ env:
 permissions:
   contents: read
   packages: write
+  actions: write
 
 concurrency:
   group: docker-publish
