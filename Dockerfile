@@ -4,7 +4,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
-RUN npm ci --include=dev
+RUN npm ci --include=dev --legacy-peer-deps
 
 FROM node:22-alpine AS builder
 WORKDIR /app
