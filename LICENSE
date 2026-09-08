@@ -1,17 +1,6 @@
 MIT License
 
 Copyright (c) 2025 disbenovi (jellydash Docker packaging)
-
-Docker packaging, CI workflow, and reconstructed helper modules in this
-repository were developed with AI assistance.
-
-This repository packages software from https://github.com/developed-by-will/jellydash
-(upstream), which is licensed under the MIT License:
-
----
-
-MIT License
-
 Copyright (c) 2025 Developed by Will
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
