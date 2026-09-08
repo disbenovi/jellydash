@@ -66,9 +66,8 @@ jobs:
 
       - name: Assemble build context
         run: |
-          shopt -s dotglob
-          mv upstream/* .
-          rmdir upstream
+          tar -C upstream --exclude=upstream/.git -cf - . | tar -C . -xf -
+          rm -rf upstream
           ls -la
 
       - name: Set up Docker Buildx
