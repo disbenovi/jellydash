@@ -6,6 +6,9 @@ on:
     paths:
       - 'Dockerfile'
       - '.github/workflows/docker-publish.yml'
+      - 'overrides/**'
+      - 'README.md'
+      - 'LICENSE'
   workflow_dispatch:
   schedule:
     # every 6 hours: check upstream for new commits
@@ -18,6 +21,7 @@ env:
 permissions:
   contents: read
   packages: write
+  actions: write
 
 concurrency:
   group: docker-publish
