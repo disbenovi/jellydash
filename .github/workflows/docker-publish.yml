@@ -42,7 +42,13 @@ jobs:
             exit 1
           fi
           LAST_SHA="${{ vars.UPSTREAM_SHA || 'none' }}"
-          if [ "$UPSTREAM_SHA" = "$LAST_SHA" ]; then
+          # Push / manual runs are deliberate (Dockerfile or override change),
+          # so always rebuild. Only the scheduled upstream poll is gated on a
+          # new upstream commit.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Triggered by ${{ github.event_name }}: building unconditionally"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [ "$UPSTREAM_SHA" = "$LAST_SHA" ]; then
             echo "No upstream change (last: $LAST_SHA, current: $UPSTREAM_SHA)"
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           else
