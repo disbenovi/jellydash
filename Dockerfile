@@ -1,12 +1,15 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS deps
+# Base image is pinned (not floating node:22-alpine) so every stage ships the
+# same audited Node runtime. 22.23.4 is the first 22.x release that fixes
+# CVE-2026-111497. Bump this tag deliberately when a newer patch lands.
+FROM node:22.23.4-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --legacy-peer-deps
 
-FROM node:22-alpine AS builder
+FROM node:22.23.4-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 ARG NEXT_PUBLIC_IMAGE_PROTOCOL=https
@@ -28,7 +31,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=build-time-placeholder
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:22.23.4-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
