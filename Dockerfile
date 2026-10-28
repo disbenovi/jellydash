@@ -7,7 +7,15 @@ FROM node:22.23.4-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
-RUN npm ci --include=dev --legacy-peer-deps
+# Security overrides (see overrides/npm-security-overrides.json): the upstream
+# dependency tree ships vulnerable next@16.3.0 (5 critical RCE/HIGH advisories),
+# sharp@0.35.3 (libheif/librsvg), and postcss's nanoid/source-map-js plus
+# tailwind's postcss-selector-parser. npm overrides pin patched versions at
+# every tree level, which makes the lockfile stale -> use `npm install` here
+# instead of `npm ci` (install still writes the same resolved tree).
+COPY overrides/npm-security-overrides.json overrides/apply-npm-overrides.cjs ./
+RUN node apply-npm-overrides.cjs npm-security-overrides.json package.json \
+ && npm install --include=dev --legacy-peer-deps
 
 FROM node:22.23.4-alpine AS builder
 WORKDIR /app
